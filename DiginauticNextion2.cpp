@@ -7,7 +7,7 @@
 */
 
 #include "Arduino.h"
-#include "DiginauticNextion.h"
+#include "DiginauticNextion2.h"
 
 //*******************************************************************
 
@@ -35,9 +35,9 @@ Time::Time(void)
 
 int Time::calcCorrection(void)
 {
-  float _fPartOfYear = (_iDaysSince1970 / 365.24) - (int) (_iDaysSince1970 / 365.24);
+  double _dPartOfYear = (_iDaysSince1970 / 365.24) - (int) (_iDaysSince1970 / 365.24);
 
-  if ( _fPartOfYear > 0.25 && _fPartOfYear < 0.83 )
+  if ( _dPartOfYear > 0.25 && _dPartOfYear < 0.83 )
   {
     return 2;
   }
@@ -141,30 +141,14 @@ void Time::setTime(double dSecondsSinceMidnight, uint16_t iDaysSince1970)
       Base Class to handle page objects
 */
 
-/*
-
-    PageObject(Stream *streamObject);
-    PageObject(Stream *streamObject, String strName, String strValue, pPageObjectType tObjetctType);
-
-    void setValue(String strValue);
-    void setName(String strName);
-    void setSerial(Stream *streamObject);
-
-    void serialPrint(String strName, String strVal);
-    void serialPrint(String strValue);
-    void serialPrint(void);
-
-
-*/
-
 PageObject::PageObject(Stream *streamObject)
 {
-  _streamRef=streamObject;
+  _streamRef = streamObject;
 }
 
 PageObject::PageObject(Stream *streamObject, String strName, String strValue, pPageObjectType tObjetctType)
 {
-  _streamRef=streamObject;
+  _streamRef = streamObject;
   _strName = strName;
   _strValue = strValue;
   _tObjetctType = tObjetctType;
@@ -194,7 +178,7 @@ void PageObject::serialPrint(String strName, String strValue, pPageObjectType tO
   }
   else
   {
-    _streamRef->print(strName + "=" + strValue);
+    _streamRef->print(strName + "=" + strValue.trim());
   }
   _streamRef->write(0xff);
   _streamRef->write(0xff);
@@ -221,4 +205,159 @@ void PageObject::setObjectType(pPageObjectType tObjetctType)
 {
   _tObjetctType = tObjetctType;
 }
+
+//*******************************************************************
+/*
+    Class AnchorageAlarm:
+      Class to store and handle AnchorageAlarm
+*/
+AnchorageAlarm::AnchorageAlarm(unsigned int iMinRadius, unsigned int iMaxRadius, unsigned int iRadiusStep)
+{
+  _iMinRadius = iMinRadius;
+  _iMaxRadius = iMaxRadius;
+  _iRadiusStep = iRadiusStep;
+  _iRadius = _iMinRadius;
+}
+
+AnchorageAlarm::AnchorageAlarm(void)
+{
+
+}
+
+//Set
+void AnchorageAlarm::setAnchoragePosition(double dLatitude, double dLongitude)
+{
+  _dAnchorageLatitude = dLatitude;
+  _dAnchorageLongitude = dLongitude;
+}
+
+void AnchorageAlarm::setActualPosition(double dLatitude, double dLongitude)
+{
+  _dActualLatitude = dLatitude;
+  _dActualLongitude = dLongitude;
+}
+
+void AnchorageAlarm::setAnchoragePosition(double dLatitude, double dLongitude, double dDistance, double dBearing)
+{
+  double dLat = dLatitude;
+  double dLong = dLongitude;
+  double R = 6371000.0;
+
+  _dAnchorageLatitude = asin((sin(dLat) * cos(dDistance/R)) + (cos(dLat) * sin(dDistance/R) * cos(dBearing)));
+  _dAnchorageLongitude = dLong + atan2(sin(dBearing) * sin(dDistance/R) * cos(dLat), cos(dDistance/R) - (sin(dLat) * sin(_dAnchorageLatitude)));
+}
+
+void AnchorageAlarm::setRadius(unsigned int iRadius)
+{
+  _iRadius = iRadius;
+}
+
+void AnchorageAlarm::setActive(bool bIsActive)
+{
+  _bIsActive = bIsActive;
+}
+
+void AnchorageAlarm::setTriggered(bool bIsTriggered)
+{
+  _bIsTriggered = bIsTriggered;
+}
+
+
+//Get
+double AnchorageAlarm::getAnchorageLatitude(void)
+{
+  return _dAnchorageLatitude;
+}
+
+double AnchorageAlarm::getAnchorageLongitude(void)
+{
+  return _dAnchorageLongitude;
+}
+
+double AnchorageAlarm::getActualLatitude(void)
+{
+  return _dActualLatitude;
+}
+
+double AnchorageAlarm::getActualLongitude(void)
+{
+  return _dActualLongitude;
+}
+
+double AnchorageAlarm::getBearing_DEG(void)
+{
+  double _Vinkel = RadToDeg(getBearing());
+  return fmod((450.0 - _Vinkel), 360.0);
+}
+
+unsigned int AnchorageAlarm::getRadius(void)
+{
+  return _iRadius;
+}
+
+unsigned int AnchorageAlarm::getMinRadius(void)
+{
+    return _iMinRadius;
+}
+
+unsigned int AnchorageAlarm::getMaxRadius(void)
+{
+    return _iMaxRadius;
+}
+
+unsigned int AnchorageAlarm::getRadiusStep(void)
+{
+    return _iRadiusStep;
+}
+
+bool AnchorageAlarm::isActive(void)
+{
+  return _bIsActive;
+}
+
+bool AnchorageAlarm::isTriggered(void)
+{
+  return _bIsTriggered;
+}
+
+double AnchorageAlarm::getBearing(void)
+{
+  //Formula:	θ = atan2( sin Δλ ⋅ cos φ2 , cos φ1 ⋅ sin φ2 − sin φ1 ⋅ cos φ2 ⋅ cos Δλ )
+  //where	φ1,λ1 is the start point, φ2,λ2 the end point (Δλ is the difference in longitude)
+  //OBS!!! φ and λ is in radians!!!
+  double y = sin(_dAnchorageLongitude - _dActualLongitude) * cos(_dAnchorageLatitude);
+  double x = (cos(_dActualLatitude) * sin(_dAnchorageLatitude)) - (sin(_dActualLatitude) * cos(_dAnchorageLatitude) * cos(_dAnchorageLongitude - _dActualLongitude));
+  return atan2(x, y);
+}
+
+double AnchorageAlarm::getDistance(void)
+{
+  long earthRadiusm = 6371000;
+  double dLat = DegToRad(RadToDeg(_dAnchorageLatitude) - RadToDeg(_dActualLatitude));
+  double dLon = DegToRad(RadToDeg(_dAnchorageLongitude) - RadToDeg(_dActualLongitude)); //_dAnchorageLongitude - _dActualLongitude;
+
+  double a = sq(sin(dLat / 2)) +
+             (sq(sin(dLon / 2)) * cos(_dActualLatitude) * cos(_dAnchorageLatitude));
+  double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+  return earthRadiusm * c;
+}
+
+/*
+double AnchorageAlarm::getDistance(void)
+{
+  long earthRadiusm = 6371000;
+  double dLat = _dAnchorageLatitude - _dActualLatitude;
+  double dLon = _dAnchorageLongitude - _dActualLongitude;
+
+  double a = sq(sin(dLat / 2)) +
+             (sq(sin(dLon / 2)) * cos(_dActualLatitude) * cos(_dAnchorageLatitude));
+  double c = 2.0 * earthRadiusm * asin(sqrt(a));
+  
+  //2 * atan2(sqrt(a), sqrt(1 - a));
+
+  return c;
+}
+*/
+
 //*******************************************************************
