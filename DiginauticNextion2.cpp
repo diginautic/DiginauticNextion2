@@ -325,8 +325,12 @@ double AnchorageAlarm::getBearing(void)
   //Formula:	θ = atan2( sin Δλ ⋅ cos φ2 , cos φ1 ⋅ sin φ2 − sin φ1 ⋅ cos φ2 ⋅ cos Δλ )
   //where	φ1,λ1 is the start point, φ2,λ2 the end point (Δλ is the difference in longitude)
   //OBS!!! φ and λ is in radians!!!
-  double y = sin(_dAnchorageLongitude - _dActualLongitude) * cos(_dAnchorageLatitude);
-  double x = (cos(_dActualLatitude) * sin(_dAnchorageLatitude)) - (sin(_dActualLatitude) * cos(_dAnchorageLatitude) * cos(_dAnchorageLongitude - _dActualLongitude));
+  //double y = sin(_dAnchorageLongitude - _dActualLongitude) * cos(_dAnchorageLatitude);
+  //double x = (cos(_dActualLatitude) * sin(_dAnchorageLatitude)) - (sin(_dActualLatitude) * cos(_dAnchorageLatitude) * cos(_dAnchorageLongitude - _dActualLongitude));
+  
+  double y = sin(_dActualLongitude - _dAnchorageLongitude) * cos(_dActualLatitude);
+  double x = (cos(_dAnchorageLatitude) * sin(_dActualLatitude)) - (sin(_dAnchorageLatitude) * cos(_dActualLatitude) * cos(_dActualLongitude - _dAnchorageLongitude));
+  
   return atan2(x, y);
 }
 
